@@ -6,6 +6,7 @@ from PySide6.QtWidgets import (
     QTableView,
     QPushButton,
     QVBoxLayout,
+    QHBoxLayout,
     QWidget,
 )
 
@@ -29,19 +30,30 @@ class MainWindow(QMainWindow):
         self.table_view = QTableView()
         self.table_view.setModel(self.model)
 
-        # Create the save button
+        # Create the buttons
+        self.add_row_button = QPushButton("Add Row")
+        self.add_row_button.clicked.connect(self.add_row)
         self.save_button = QPushButton("Save Changes")
         self.save_button.clicked.connect(self.save_changes)
 
-        # Set up the layout
-        layout = QVBoxLayout()
-        layout.addWidget(self.table_view)
-        layout.addWidget(self.save_button)
+        # Set up the button layout
+        button_layout = QHBoxLayout()
+        button_layout.addWidget(self.add_row_button)
+        button_layout.addWidget(self.save_button)
+
+        # Set up the main layout
+        main_layout = QVBoxLayout()
+        main_layout.addWidget(self.table_view)
+        main_layout.addLayout(button_layout)
 
         # Set the central widget
         container = QWidget()
-        container.setLayout(layout)
+        container.setLayout(main_layout)
         self.setCentralWidget(container)
+
+    def add_row(self):
+        """Add a new row to the table."""
+        self.model.addRow()
 
     def save_changes(self):
         """Save the changes from the model back to the database."""

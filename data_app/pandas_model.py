@@ -52,3 +52,12 @@ class PandasModel(QAbstractTableModel):
     def get_dataframe(self):
         """Return the underlying DataFrame."""
         return self._df
+
+    def addRow(self):
+        """Add a new, empty row to the model."""
+        self.beginInsertRows(QModelIndex(), self.rowCount(), self.rowCount())
+        new_row = {col: "" for col in self._df.columns}
+        new_row_df = pd.DataFrame([new_row])
+        self._df = pd.concat([self._df, new_row_df], ignore_index=True)
+        self.endInsertRows()
+        return True
