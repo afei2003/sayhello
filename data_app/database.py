@@ -1,9 +1,24 @@
 import pandas as pd
 from sqlalchemy import create_engine, inspect
+import urllib
 
-DB_FILE = "sample.db"
-TABLE_NAME = "employees"
-ENGINE = create_engine(f"sqlite:///{DB_FILE}")
+# --- MSSQL Configuration ---
+SERVER = "192.168.100.88"
+DATABASE = "test"
+USERNAME = "sa"
+PASSWORD = "abc123..."
+TABLE_NAME = "user"
+
+# Connection string for pyodbc
+params = urllib.parse.quote_plus(
+    f"DRIVER={{ODBC Driver 17 for SQL Server}};"
+    f"SERVER={SERVER};"
+    f"DATABASE={DATABASE};"
+    f"UID={USERNAME};"
+    f"PWD={PASSWORD};"
+)
+ENGINE = create_engine(f"mssql+pyodbc:///?odbc_connect={params}")
+
 
 def setup_database():
     """
@@ -15,26 +30,38 @@ def setup_database():
         print(f"Table '{TABLE_NAME}' not found. Creating and populating it.")
         data = {
             "id": [1, 2, 3, 4],
-            "name": ["Alice", "Bob", "Charlie", "David"],
-            "role": ["Engineer", "Artist", "Teacher", "Doctor"],
-            "salary": [70000, 60000, 50000, 90000],
+            "username": ["admin", "guest", "user1", "user2"],
+            "nickname": ["Administrator", "Guest User", "First User", "Second User"],
+            "note": ["System admin", "Limited access", "Regular user", "Regular user"],
         }
         df = pd.DataFrame(data)
-        df.to_sql(TABLE_NAME, ENGINE, index=False)
+        # For MSSQL, it's often better to let the database handle the primary key.
+        # We will set 'id' as the index and let the database create it.
+        df.set_index("id", inplace=True)
+        df.to_sql(TABLE_NAME, ENGINE, index=True, index_label='id')
     else:
         print(f"Table '{TABLE_NAME}' already exists.")
+
 
 def load_data():
     """Loads the data from the database into a pandas DataFrame."""
     return pd.read_sql(f"SELECT * FROM {TABLE_NAME}", ENGINE, index_col="id")
 
+
 def save_data(df):
     """Saves the DataFrame back to the database."""
-    df.to_sql(TABLE_NAME, ENGINE, if_exists="replace", index=True)
+    # Using 'replace' can be risky. A more robust solution would be to
+    # update existing records and insert new ones. But for this example,
+    # we will stick to a simple replace.
+    df.to_sql(TABLE_NAME, ENGINE, if_exists="replace", index=True, index_label='id')
+
 
 if __name__ == "__main__":
-    setup_database()
-    print("Database setup complete.")
-    df = load_data()
-    print("Initial data:")
-    print(df)
+    try:
+        setup_database()
+        print("Database setup complete.")
+        df = load_data()
+        print("Initial data:")
+        print(df)
+    except Exception as e:
+        print(f"An error occurred: {e}")
