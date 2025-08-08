@@ -8,6 +8,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QHBoxLayout,
     QWidget,
+    QMessageBox,
 )
 
 from database import setup_database, load_data, save_data
@@ -33,12 +34,15 @@ class MainWindow(QMainWindow):
         # Create the buttons
         self.add_row_button = QPushButton("Add Row")
         self.add_row_button.clicked.connect(self.add_row)
+        self.delete_row_button = QPushButton("Delete Row")
+        self.delete_row_button.clicked.connect(self.delete_row)
         self.save_button = QPushButton("Save Changes")
         self.save_button.clicked.connect(self.save_changes)
 
         # Set up the button layout
         button_layout = QHBoxLayout()
         button_layout.addWidget(self.add_row_button)
+        button_layout.addWidget(self.delete_row_button)
         button_layout.addWidget(self.save_button)
 
         # Set up the main layout
@@ -54,6 +58,15 @@ class MainWindow(QMainWindow):
     def add_row(self):
         """Add a new row to the table."""
         self.model.addRow()
+
+    def delete_row(self):
+        """Delete the selected row from the table."""
+        selected_row = self.table_view.currentIndex().row()
+        if selected_row >= 0:
+            self.model.deleteRow(selected_row)
+        else:
+            # In a real app, you might want to show a message to the user
+            print("No row selected to delete.")
 
     def save_changes(self):
         """Save the changes from the model back to the database."""

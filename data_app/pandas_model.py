@@ -61,3 +61,12 @@ class PandasModel(QAbstractTableModel):
         self._df = pd.concat([self._df, new_row_df], ignore_index=True)
         self.endInsertRows()
         return True
+
+    def deleteRow(self, row):
+        """Delete a row from the model."""
+        if 0 <= row < self.rowCount():
+            self.beginRemoveRows(QModelIndex(), row, row)
+            self._df = self._df.drop(self._df.index[row]).reset_index(drop=True)
+            self.endRemoveRows()
+            return True
+        return False
