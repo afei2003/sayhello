@@ -23,13 +23,11 @@ class MainWindow(QMainWindow):
         # Set up the database
         setup_database()
 
-        # Load data and create the model
-        self.df = load_data()
-        self.model = PandasModel(self.df)
-
         # Create the table view
         self.table_view = QTableView()
-        self.table_view.setModel(self.model)
+
+        # Load data and create the model
+        self.load_and_set_model()
 
         # Create the buttons
         self.add_row_button = QPushButton("Add Row")
@@ -38,11 +36,15 @@ class MainWindow(QMainWindow):
         self.delete_row_button.clicked.connect(self.delete_row)
         self.save_button = QPushButton("Save Changes")
         self.save_button.clicked.connect(self.save_changes)
+        self.reload_button = QPushButton("Reload Data")
+        self.reload_button.clicked.connect(self.reload_data)
 
         # Set up the button layout
         button_layout = QHBoxLayout()
         button_layout.addWidget(self.add_row_button)
         button_layout.addWidget(self.delete_row_button)
+        button_layout.addStretch() # Add a spacer
+        button_layout.addWidget(self.reload_button)
         button_layout.addWidget(self.save_button)
 
         # Set up the main layout
@@ -55,6 +57,12 @@ class MainWindow(QMainWindow):
         container.setLayout(main_layout)
         self.setCentralWidget(container)
 
+    def load_and_set_model(self):
+        """Loads data from the database and sets it as the model for the view."""
+        self.df = load_data()
+        self.model = PandasModel(self.df)
+        self.table_view.setModel(self.model)
+
     def add_row(self):
         """Add a new row to the table."""
         self.model.addRow()
@@ -65,7 +73,6 @@ class MainWindow(QMainWindow):
         if selected_row >= 0:
             self.model.deleteRow(selected_row)
         else:
-            # In a real app, you might want to show a message to the user
             print("No row selected to delete.")
 
     def save_changes(self):
@@ -73,6 +80,16 @@ class MainWindow(QMainWindow):
         updated_df = self.model.get_dataframe()
         save_data(updated_df)
         print("Changes saved successfully.")
+        # It's good practice to reload data from DB after saving to get new IDs
+        print("Reloading data to get new IDs from database...")
+        self.load_and_set_model()
+
+    def reload_data(self):
+        """Reloads the data from the database, discarding local changes."""
+        print("Reloading data from database...")
+        self.load_and_set_model()
+        print("Data reloaded.")
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
