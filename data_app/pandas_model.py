@@ -25,7 +25,11 @@ class PandasModel(QAbstractTableModel):
         if not index.isValid():
             return None
         if role == Qt.DisplayRole or role == Qt.EditRole:
-            return str(self._df.iloc[index.row(), index.column()])
+            value = self._df.iloc[index.row(), index.column()]
+            # Handle pandas NA values, which are not strings
+            if pd.isna(value):
+                return ""
+            return str(value)
         return None
 
     def headerData(self, section, orientation, role=Qt.DisplayRole):
@@ -34,7 +38,8 @@ class PandasModel(QAbstractTableModel):
             if orientation == Qt.Horizontal:
                 return str(self._df.columns[section])
             if orientation == Qt.Vertical:
-                return str(self._df.index[section])
+                # Use 1-based row numbers for the vertical header
+                return str(section + 1)
         return None
 
     def setData(self, index, value, role=Qt.EditRole):
@@ -47,6 +52,9 @@ class PandasModel(QAbstractTableModel):
 
     def flags(self, index):
         """Return the flags for the item."""
+        # Make the 'id' column read-only
+        if self._df.columns[index.column()].lower() == 'id':
+            return super().flags(index)
         return super().flags(index) | Qt.ItemIsEditable
 
     def get_dataframe(self):
@@ -56,7 +64,8 @@ class PandasModel(QAbstractTableModel):
     def addRow(self):
         """Add a new, empty row to the model."""
         self.beginInsertRows(QModelIndex(), self.rowCount(), self.rowCount())
-        new_row = {col: "" for col in self._df.columns}
+        # Create a new row with pd.NA for all columns
+        new_row = {col: pd.NA for col in self._df.columns}
         new_row_df = pd.DataFrame([new_row])
         self._df = pd.concat([self._df, new_row_df], ignore_index=True)
         self.endInsertRows()
@@ -66,6 +75,7 @@ class PandasModel(QAbstractTableModel):
         """Delete a row from the model."""
         if 0 <= row < self.rowCount():
             self.beginRemoveRows(QModelIndex(), row, row)
+            # Drop the row and reset the default integer index
             self._df = self._df.drop(self._df.index[row]).reset_index(drop=True)
             self.endRemoveRows()
             return True

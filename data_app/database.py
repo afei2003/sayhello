@@ -7,7 +7,7 @@ SERVER = "192.168.100.88"
 DATABASE = "test"
 USERNAME = "sa"
 PASSWORD = "abc123..."
-TABLE_NAME = "user"
+TABLE_NAME = "`user`" # Use backticks for safety as user is a keyword
 
 # Connection string for pyodbc
 params = urllib.parse.quote_plus(
@@ -26,8 +26,9 @@ def setup_database():
     initial data if it doesn't exist.
     """
     inspector = inspect(ENGINE)
-    if not inspector.has_table(TABLE_NAME):
-        print(f"Table '{TABLE_NAME}' not found. Creating and populating it.")
+    # The table name in has_table should not have quotes
+    if not inspector.has_table(TABLE_NAME.strip('`')):
+        print(f"Table {TABLE_NAME} not found. Creating and populating it.")
         data = {
             "id": [1, 2, 3, 4],
             "username": ["admin", "guest", "user1", "user2"],
@@ -35,25 +36,62 @@ def setup_database():
             "note": ["System admin", "Limited access", "Regular user", "Regular user"],
         }
         df = pd.DataFrame(data)
-        # For MSSQL, it's often better to let the database handle the primary key.
-        # We will set 'id' as the index and let the database create it.
-        df.set_index("id", inplace=True)
-        df.to_sql(TABLE_NAME, ENGINE, index=True, index_label='id')
+        # id is now a regular column, so index=False is correct.
+        df.to_sql(TABLE_NAME.strip('`'), ENGINE, index=False, if_exists='replace')
     else:
-        print(f"Table '{TABLE_NAME}' already exists.")
+        print(f"Table {TABLE_NAME} already exists.")
 
 
 def load_data():
     """Loads the data from the database into a pandas DataFrame."""
-    return pd.read_sql(f"SELECT * FROM {TABLE_NAME}", ENGINE, index_col="id")
+    # id is now a regular column
+    return pd.read_sql(f"SELECT * FROM {TABLE_NAME}", ENGINE)
 
+
+from sqlalchemy import text
 
 def save_data(df):
-    """Saves the DataFrame back to the database."""
-    # Using 'replace' can be risky. A more robust solution would be to
-    # update existing records and insert new ones. But for this example,
-    # we will stick to a simple replace.
-    df.to_sql(TABLE_NAME, ENGINE, if_exists="replace", index=True, index_label='id')
+    """
+    Saves the DataFrame back to the database using a MERGE statement
+    to handle inserts, updates, and deletes.
+    """
+    temp_table_name = f"temp_{TABLE_NAME.strip('`')}"
+    target_table = TABLE_NAME.strip('`')
+
+    # Make a copy to avoid modifying the original DataFrame in the model
+    df_to_save = df.copy()
+
+    # Ensure the 'id' column is a nullable integer type for the database
+    df_to_save['id'] = pd.to_numeric(df_to_save['id'], errors='coerce').astype('Int64')
+
+    with ENGINE.begin() as connection:
+        # Step 1: Upload the current data to a temporary table
+        df_to_save.to_sql(temp_table_name, connection, if_exists='replace', index=False)
+
+        # Step 2: Construct and execute the MERGE statement
+        cols_for_insert = [col for col in df_to_save.columns if col != 'id']
+        cols_for_update = [f"target.{col} = source.{col}" for col in cols_for_insert]
+
+        merge_sql = text(f"""
+        MERGE {target_table} AS target
+        USING {temp_table_name} AS source
+        ON (target.id = source.id)
+
+        -- For updating existing records that have changed
+        WHEN MATCHED AND ({' OR '.join([f'target.{c} <> source.{c}' for c in cols_for_insert if df_to_save[c].dtype != 'object'] + [f'ISNULL(target.{c}, \'\') <> ISNULL(source.{c}, \'\')' for c in cols_for_insert if df_to_save[c].dtype == 'object'])}) THEN
+            UPDATE SET {', '.join(cols_for_update)}
+
+        -- For inserting new records
+        WHEN NOT MATCHED BY TARGET THEN
+            INSERT ({', '.join(cols_for_insert)})
+            VALUES ({', '.join([f'source.{c}' for c in cols_for_insert])})
+
+        -- For deleting records that are no longer in the dataframe
+        WHEN NOT MATCHED BY SOURCE THEN
+            DELETE;
+        """)
+
+        connection.execute(merge_sql)
 
 
 if __name__ == "__main__":
