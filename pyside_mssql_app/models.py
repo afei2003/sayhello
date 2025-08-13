@@ -156,6 +156,21 @@ class PinTableModel(QAbstractTableModel):
             QMessageBox.critical(None, "Database Error", f"Could not add Pin: {e}")
             return False
 
+    def edit_pin(self, row, data):
+        pin_to_edit = self._data[row]
+        pin_to_edit.pin = data["pin"]
+        pin_to_edit.name = data["name"]
+        pin_to_edit.base_pin = data["base_pin"]
+        pin_to_edit.note = data["note"]
+        try:
+            self.session.commit()
+            self.dataChanged.emit(self.index(row, 0), self.index(row, self.columnCount() - 1))
+            return True
+        except Exception as e:
+            self.session.rollback()
+            QMessageBox.critical(None, "Database Error", f"Could not edit Pin: {e}")
+            return False
+
     def delete_pin(self, row):
         pin_to_delete = self._data[row]
         self.session.delete(pin_to_delete)

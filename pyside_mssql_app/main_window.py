@@ -47,14 +47,14 @@ class PnDialog(QDialog):
         }
 
 class PinDialog(QDialog):
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, pin=None):
         super().__init__(parent)
-        self.setWindowTitle("Add Pin")
+        self.setWindowTitle("Edit Pin" if pin else "Add Pin")
 
-        self.pin_edit = QLineEdit()
-        self.name_edit = QLineEdit()
-        self.base_pin_edit = QLineEdit()
-        self.note_edit = QLineEdit()
+        self.pin_edit = QLineEdit(pin.pin if pin else "")
+        self.name_edit = QLineEdit(pin.name if pin else "")
+        self.base_pin_edit = QLineEdit(pin.base_pin if pin else "")
+        self.note_edit = QLineEdit(pin.note if pin else "")
 
         form_layout = QFormLayout()
         form_layout.addRow("Pin:", self.pin_edit)
@@ -141,8 +141,10 @@ class MainWindow(QMainWindow):
 
         pin_button_layout = QHBoxLayout()
         self.btn_add_pin = QPushButton("Add Pin")
+        self.btn_edit_pin = QPushButton("Edit Pin")
         self.btn_delete_pin = QPushButton("Delete Pin")
         pin_button_layout.addWidget(self.btn_add_pin)
+        pin_button_layout.addWidget(self.btn_edit_pin)
         pin_button_layout.addWidget(self.btn_delete_pin)
         pin_button_layout.addStretch()
 
@@ -161,6 +163,7 @@ class MainWindow(QMainWindow):
         self.btn_edit_pn.clicked.connect(self.edit_pn)
         self.btn_delete_pn.clicked.connect(self.delete_pn)
         self.btn_add_pin.clicked.connect(self.add_pin)
+        self.btn_edit_pin.clicked.connect(self.edit_pin)
         self.btn_delete_pin.clicked.connect(self.delete_pin)
 
     def closeEvent(self, event):
@@ -242,6 +245,26 @@ class MainWindow(QMainWindow):
                 return
             new_pin = Pin(**data)
             self.pin_model.add_pin(new_pin)
+
+    @Slot()
+    def edit_pin(self):
+        indexes = self.table_pin.selectionModel().selectedRows()
+        if not indexes:
+            QMessageBox.warning(self, "Selection Error", "Please select a pin to edit.")
+            return
+
+        row = indexes[0].row()
+        pin_to_edit = self.pin_model.get_pin_by_row(row)
+        if not pin_to_edit:
+            return # Should not happen if a row is selected
+
+        dialog = PinDialog(self, pin=pin_to_edit)
+        if dialog.exec():
+            data = dialog.get_data()
+            if not data["pin"]:
+                QMessageBox.warning(self, "Input Error", "Pin cannot be empty.")
+                return
+            self.pin_model.edit_pin(row, data)
 
     @Slot()
     def delete_pin(self):
