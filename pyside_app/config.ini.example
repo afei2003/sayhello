@@ -1,0 +1,6 @@
+[database]
+server = YOUR_SERVER_NAME
+database = YOUR_DATABASE_NAME
+username = YOUR_USERNAME
+password = YOUR_PASSWORD
+# driver = ODBC Driver 17 for SQL Server  ; This is the default, uncomment and change if you use a different one.
