@@ -4,6 +4,7 @@ from pathlib import Path
 import pandas as pd
 
 from PySide6.QtCore import QAbstractTableModel, Qt, QDate
+from PySide6.QtGui import QIntValidator
 from PySide6.QtWidgets import (
     QApplication,
     QMainWindow,
@@ -16,6 +17,7 @@ from PySide6.QtWidgets import (
     QFileDialog,
     QLabel,
     QDateEdit,
+    QLineEdit,
 )
 from sqlalchemy import create_engine, text, bindparam
 from sqlalchemy.exc import SQLAlchemyError
@@ -74,6 +76,26 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(central_widget)
         main_layout = QVBoxLayout(central_widget)
 
+        # ID/Quantity editing layout
+        id_layout = QHBoxLayout()
+        self.id_input = QLineEdit()
+        self.quantity_input = QLineEdit()
+        self.quantity_input.setValidator(QIntValidator())
+        self.current_quantity_display = QLineEdit()
+        self.current_quantity_display.setReadOnly(True)
+        self.query_button = QPushButton("Query")
+        self.update_button = QPushButton("Update")
+
+        id_layout.addWidget(QLabel("ID:"))
+        id_layout.addWidget(self.id_input)
+        id_layout.addWidget(QLabel("Quantity:"))
+        id_layout.addWidget(self.quantity_input)
+        id_layout.addWidget(QLabel("Current Quantity:"))
+        id_layout.addWidget(self.current_quantity_display)
+        id_layout.addWidget(self.query_button)
+        id_layout.addWidget(self.update_button)
+        id_layout.addStretch()
+
         # Date selection layout
         date_layout = QHBoxLayout()
         self.start_date_edit = QDateEdit(calendarPopup=True)
@@ -94,6 +116,7 @@ class MainWindow(QMainWindow):
         self.table_view = QTableView()
 
         # Add widgets to main layout
+        main_layout.addLayout(id_layout)
         main_layout.addLayout(date_layout)
         main_layout.addWidget(self.fetch_button)
         main_layout.addWidget(self.export_button)
@@ -107,6 +130,8 @@ class MainWindow(QMainWindow):
         # --- Connections ---
         self.fetch_button.clicked.connect(self.fetch_data)
         self.export_button.clicked.connect(self.export_to_excel)
+        self.query_button.clicked.connect(self.query_id_data)
+        self.update_button.clicked.connect(self.update_id_data)
 
         # --- Initialization ---
         self.setup_database_connection()
@@ -250,6 +275,76 @@ class MainWindow(QMainWindow):
                 QMessageBox.information(self, "Success", f"Data successfully exported to {file_path}")
             except Exception as e:
                 self.show_error_message(f"Failed to export data to Excel: {e}")
+
+    def query_id_data(self):
+        """
+        Placeholder for querying data based on the ID.
+        The user should add their custom SQL logic here.
+        """
+        item_id = self.id_input.text()
+        if not item_id:
+            self.show_error_message("Please enter an ID to query.")
+            return
+
+        QMessageBox.information(self, "Query", f"Query button clicked for ID: {item_id}.\n\nPlease add your SQL logic to the `query_id_data` method in `main.py`.")
+
+        # Example of how you might get the current quantity:
+        #
+        # try:
+        #     with self.engine.connect() as connection:
+        #         # --- USER-DEFINED SQL QUERY ---
+        #         # Replace with your actual query
+        #         query = text("SELECT quantity FROM your_table WHERE id = :id")
+        #         result = connection.execute(query, {'id': item_id}).scalar_one_or_none()
+        #
+        #         if result is not None:
+        #             self.current_quantity_display.setText(str(result))
+        #         else:
+        #             self.show_error_message(f"No item found with ID: {item_id}")
+        #             self.current_quantity_display.clear()
+        #
+        # except SQLAlchemyError as e:
+        #     self.show_error_message(f"Database query failed: {e}")
+        # except Exception as e:
+        #     self.show_error_message(f"An unexpected error occurred: {e}")
+
+
+    def update_id_data(self):
+        """
+        Placeholder for updating data based on the ID and quantity.
+        The user should add their custom SQL logic here.
+        """
+        item_id = self.id_input.text()
+        quantity = self.quantity_input.text()
+
+        if not item_id or not quantity:
+            self.show_error_message("Please enter both an ID and a quantity to update.")
+            return
+
+        QMessageBox.information(self, "Update", f"Update button clicked for ID: {item_id} with quantity: {quantity}.\n\nPlease add your SQL logic to the `update_id_data` method in `main.py`.")
+
+        # Example of how you might update the quantity:
+        #
+        # try:
+        #     with self.engine.connect() as connection:
+        #         # --- USER-DEFINED SQL UPDATE ---
+        #         # Replace with your actual update statement
+        #         update_stmt = text("UPDATE your_table SET quantity = :quantity WHERE id = :id")
+        #         result = connection.execute(update_stmt, {'id': item_id, 'quantity': int(quantity)})
+        #         connection.commit() # Important: commit the transaction
+        #
+        #         if result.rowcount > 0:
+        #             QMessageBox.information(self, "Success", f"Successfully updated ID: {item_id}")
+        #             # Optionally, re-query the data to show the updated quantity
+        #             self.query_id_data()
+        #         else:
+        #             self.show_error_message(f"No item found with ID: {item_id} to update.")
+        #
+        # except SQLAlchemyError as e:
+        #     self.show_error_message(f"Database update failed: {e}")
+        # except Exception as e:
+        #     self.show_error_message(f"An unexpected error occurred: {e}")
+
 
     def show_error_message(self, message):
         """
