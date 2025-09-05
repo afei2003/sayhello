@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QDateEdit,
     QLineEdit,
+    QStatusBar,
 )
 from sqlalchemy import create_engine, text, bindparam
 from sqlalchemy.exc import SQLAlchemyError
@@ -134,6 +135,7 @@ class MainWindow(QMainWindow):
         self.update_button.clicked.connect(self.update_id_data)
 
         # --- Initialization ---
+        self.setStatusBar(QStatusBar(self))
         self.setup_database_connection()
 
 
@@ -168,7 +170,7 @@ class MainWindow(QMainWindow):
 
             # Test the connection to ensure it's valid
             with self.engine.connect() as connection:
-                print("Database connection successful!")
+                self.statusBar().showMessage("Database connection successful!", 5000)
 
         except (SQLAlchemyError, KeyError) as e:
             self.show_error_message(f"Database connection failed: {e}")
@@ -237,7 +239,7 @@ class MainWindow(QMainWindow):
                 self.model = PandasModel(df)
                 self.table_view.setModel(self.model)
                 self.export_button.setEnabled(True)
-                print(f"Successfully fetched {len(df)} rows.")
+                self.statusBar().showMessage(f"Successfully fetched {len(df)} rows.", 5000)
 
         except SQLAlchemyError as e:
             self.show_error_message(f"Failed to fetch data: {e}")
